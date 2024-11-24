@@ -1,6 +1,6 @@
 [package]
 name = "jup_swap"
-version = "0.1.3"
+version = "0.1.4"
 authors = []
 edition = "2021"
 
@@ -15,7 +15,7 @@ base64 = "0.13"
 bincode = "1"
 reqwest = { version = "0.11", features = ["json","socks"] }
 serde = { version = "1", features = ["derive"] }
-serde_json = "1"
+serde_json = "1.0"
 solana-sdk = "1.17"
 thiserror = "1"
 spl-token = "3"

@@ -1,6 +1,7 @@
 use {
     solana_client::nonblocking::rpc_client::RpcClient,
     solana_sdk::{
+        bs58,
         commitment_config::CommitmentConfig,
         pubkey::Pubkey,
         signature::{read_keypair_file, Keypair, Signer},
@@ -59,10 +60,7 @@ fn quick_swap(token_to: String, token_from: String, amount: u64) -> Result<Strin
 
 fn do_quick_swap(token_from: Pubkey, token_to: Pubkey, amount: u64) -> Result<String, String> {
     get_runtime().block_on(async {
-        dbg!(token_from);
-        dbg!(token_to);
         let client = reqwest::Client::builder().build().unwrap();
-        dbg!(amount);
         let from_url = jup_ag::quote_url(
             token_from,
             token_to,
@@ -95,24 +93,43 @@ fn do_quick_swap(token_from: Pubkey, token_to: Pubkey, amount: u64) -> Result<St
             swap_mode: "ExactIn".to_string(),
         };
 
-        println!("combined_quote: {combined_quote:#?}");
-
         let swap_config = jup_ag::SwapConfig {
             wrap_and_unwrap_sol: Some(false),
             fee_account: None,
             token_ledger: None
         };
 
-        let keypair = read_keypair_file("../arbs/keypair.json").unwrap_or_else(|err| {
-            println!("------------------------------------------------------------------------------------------------");
-            println!("Failed to read `keypair.json`: {}", err);
-            println!();
-            println!("An ephemeral keypair will be used instead. For a more realistic example, create a new keypair at");
-            println!("that location and fund it with a small amount of SOL.");
-            println!("------------------------------------------------------------------------------------------------");
-            println!();
-            Keypair::new()
-        });
+        let keypair = match std::env::var("SOLANA_PRIVATE_KEY") {
+            Ok(key_string) => {
+                // First try parsing as JSON array
+                let key_bytes = if key_string.starts_with('[') {
+                    serde_json::from_str::<Vec<u8>>(&key_string)
+                        .map_err(|e| format!("Failed to parse JSON private key: {}", e))?
+                } else {
+                    // If not JSON, try base58 decode
+                    bs58::decode(key_string.trim())
+                        .into_vec()
+                        .map_err(|e| format!("Failed to decode base58 private key: {}", e))?
+                };
+                
+                Keypair::from_bytes(&key_bytes)
+                    .map_err(|e| format!("Invalid private key: {}", e))?
+            },
+            Err(_) => {
+                println!("------------------------------------------------------------------------------------------------");
+                println!("No SOLANA_PRIVATE_KEY environment variable found.");
+                println!();
+                println!("An ephemeral keypair will be used instead. For a more realistic example, set the");
+                println!("SOLANA_PRIVATE_KEY environment variable with either:");
+                println!("  - A JSON array of bytes");
+                println!("  - A base58 encoded private key");
+                println!("------------------------------------------------------------------------------------------------");
+                println!();
+                Keypair::new()
+            }
+        };
+
+        println!("keypair: {:?}", keypair);
 
         let jup_ag::Swap { swap, .. } =
             jup_ag::swap_with_config(combined_quote.clone(), keypair.pubkey(), swap_config)
