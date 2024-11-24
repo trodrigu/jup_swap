@@ -2,7 +2,7 @@ defmodule JupSwap.MixProject do
   use Mix.Project
 
   @source_url "https://github.com/trodrigu/jup_swap"
-  @version "0.1.2"
+  @version "0.1.3"
   @dev? String.ends_with?(@version, "-dev")
   @force_build? System.get_env("JUP_SWAP_BUILD") in ["1", "true"]
 
@@ -34,6 +34,7 @@ defmodule JupSwap.MixProject do
     [
       {:rustler, "~> 0.34.0", optional: not (@dev? or @force_build?)},
       {:rustler_precompiled, "~> 0.7"},
+      {:ex_doc, ">= 0.0.0", only: :dev, runtime: false}
       # {:dep_from_hexpm, "~> 0.3.0"},
       # {:dep_from_git, git: "https://github.com/elixir-lang/my_dep.git", tag: "0.1.0"}
     ]
@@ -41,6 +42,7 @@ defmodule JupSwap.MixProject do
 
   defp package do
     [
+      description: "An Elixir wrapper for the Jupiter Swap SDK",
       files: [
         "lib",
         "native",

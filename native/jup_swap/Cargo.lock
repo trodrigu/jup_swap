@@ -2103,7 +2103,7 @@ dependencies = [
 
 [[package]]
 name = "jup_swap"
-version = "0.1.0"
+version = "0.1.2"
 dependencies = [
  "anyhow",
  "async-std",

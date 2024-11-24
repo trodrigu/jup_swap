@@ -198,7 +198,7 @@ pub fn quote_url(
     swap_mode: String,
 ) -> std::string::String {
     format!(
-        "https://quote-api.jup.ag/v6/quote?excludeDexes=GooseFX,Invariant&inputMint={}&outputMint={}&amount={}&onlyDirectRoutes={}&swapMode={}{}",
+        "https://quote-api.jup.ag/v6/quote?inputMint={}&outputMint={}&amount={}&onlyDirectRoutes={}&swapMode={}{}",
         input_mint,
         output_mint,
         amount,
