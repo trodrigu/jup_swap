@@ -1,6 +1,6 @@
 [package]
 name = "jup_swap"
-version = "0.1.4"
+version = "0.1.5"
 authors = []
 edition = "2021"
 
