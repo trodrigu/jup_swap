@@ -81,13 +81,15 @@ fn do_quick_swap(token_from: Pubkey, token_to: Pubkey, amount: u64) -> Result<St
 
         combined_route_plans.append(&mut from_quote.clone().route_plan);
 
+        let slippage_bps = std::env::var("SLIPPAGE_BPS").map(|s| s.parse::<u64>().unwrap()).unwrap_or(20);
+
         let combined_quote = jup_ag::Quote {
             input_mint: from_quote.input_mint,
             output_mint: from_quote.output_mint,
             in_amount: from_quote.in_amount,
             out_amount: from_quote.out_amount,
             route_plan: combined_route_plans,
-            slippage_bps: 0,
+            slippage_bps: slippage_bps,
             price_impact_pct: from_quote.price_impact_pct,
             other_amount_threshold: from_quote.other_amount_threshold,
             swap_mode: "ExactIn".to_string(),
@@ -129,8 +131,6 @@ fn do_quick_swap(token_from: Pubkey, token_to: Pubkey, amount: u64) -> Result<St
             }
         };
 
-        println!("keypair: {:?}", keypair);
-
         let jup_ag::Swap { swap, .. } =
             jup_ag::swap_with_config(combined_quote.clone(), keypair.pubkey(), swap_config)
                 .await
@@ -141,8 +141,10 @@ fn do_quick_swap(token_from: Pubkey, token_to: Pubkey, amount: u64) -> Result<St
         let vt = VersionedTransaction::try_new(transaction.message, &[&keypair]).unwrap();
         vt.verify_with_results();
 
+        let rpc_url = std::env::var("RPC_URL").unwrap_or("https://api.mainnet-beta.solana.com".to_string());
+
         let rpc_client = RpcClient::new_with_commitment(
-            "https://attentive-crimson-pallet.solana-mainnet.quiknode.pro/81b847d3010737565f98dbfb0a5416e57843b50e/".into(),
+            rpc_url.into(),
             CommitmentConfig::confirmed(),
         );
 
