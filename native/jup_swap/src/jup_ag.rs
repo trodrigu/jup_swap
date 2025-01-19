@@ -3,9 +3,11 @@ use {
     solana_sdk::{
         pubkey::{ParsePubkeyError, Pubkey},
         transaction::{VersionedTransaction},
+        instruction::{AccountMeta, Instruction},
     },
     reqwest,
     std::fmt,
+    std::str::FromStr,
 };
 
 mod field_as_string;
@@ -240,6 +242,66 @@ struct SwapResponse {
     //cleanup_transaction: Option<String>,
 }
 
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SwapInstructions {
+    pub token_ledger_instruction: Option<JupiterInstruction>,
+    pub compute_budget_instructions: Vec<JupiterInstruction>,
+    pub setup_instructions: Vec<JupiterInstruction>,
+    pub swap_instruction: JupiterInstruction,
+    pub cleanup_instruction: Option<JupiterInstruction>,
+    pub address_lookup_table_addresses: Vec<String>,
+    pub compute_unit_limit: u32,
+    pub dynamic_slippage_report: Option<serde_json::Value>,
+    pub other_instructions: Vec<JupiterInstruction>,
+    pub prioritization_fee_lamports: u64,
+    pub prioritization_type: PrioritizationType,
+    pub simulation_error: Option<String>,
+    pub simulation_slot: Option<u64>,
+    #[serde(default)]
+    pub program_id: String,
+    #[serde(default)]
+    pub data: String,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct JupiterInstruction {
+    pub program_id: String,
+    pub accounts: Vec<JupiterAccount>,
+    pub data: String,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct JupiterAccount {
+    pubkey: String,
+    is_signer: bool,
+    is_writable: bool,
+}
+
+impl JupiterInstruction {
+    pub fn into_instruction(self) -> Result<Instruction> {
+        Ok(Instruction {
+            program_id: Pubkey::from_str(&self.program_id)
+                .map_err(Error::ParsePubkey)?,
+            accounts: self.accounts
+                .into_iter()
+                .map(|acc| {
+                    Pubkey::from_str(&acc.pubkey)
+                        .map_err(Error::ParsePubkey)
+                        .map(|pubkey| AccountMeta {
+                            pubkey,
+                            is_signer: acc.is_signer,
+                            is_writable: acc.is_writable,
+                        })
+                })
+                .collect::<Result<Vec<_>>>()?,
+            data: base64::decode(&self.data)
+                .map_err(Error::Base64Decode)?,
+        })
+    }
+}
 
 /// Get swap serialized transactions for a quote
 pub async fn swap_with_config(
@@ -267,14 +329,54 @@ pub async fn swap_with_config(
     })
 }
 
+/// Get swap instructions for a quote
+pub async fn swap_with_instructions(
+    quote_response: Quote,
+    user_public_key: Pubkey,
+    swap_config: SwapConfig,
+) -> Result<SwapInstructions> {
+    let url = "https://quote-api.jup.ag/v6/swap-instructions";
+
+    let request = SwapRequest {
+        quote_response,
+        wrap_and_unwrap_sol: swap_config.wrap_and_unwrap_sol,
+        user_public_key,
+    };
+
+    let client = reqwest::Client::new();
+    let response = client.post(url)
+        .json(&request)
+        .send()
+        .await?;
+    
+    // // Get the raw JSON as a Value first
+    let json_value = response.json::<serde_json::Value>().await?;
+    // println!("Raw JSON response: {}", serde_json::to_string_pretty(&json_value).unwrap());
+    
+    // Then process it with maybe_jupiter_api_error
+    maybe_jupiter_api_error::<SwapInstructions>(json_value)
+}
+
 /// Get swap serialized transactions for a quote using `SwapConfig` defaults
 pub async fn swap(route: Quote, user_public_key: Pubkey) -> Result<Swap> {
     swap_with_config(route, user_public_key, SwapConfig::default()).await
 }
 
-
 fn decode(base64_transaction: String) -> Result<VersionedTransaction> {
     bincode::deserialize(&base64::decode(base64_transaction)?).map_err(|err| err.into())
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PrioritizationType {
+    pub compute_budget: ComputeBudget,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ComputeBudget {
+    pub estimated_micro_lamports: u64,
+    pub micro_lamports: u64,
 }
 
 

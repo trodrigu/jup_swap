@@ -6,12 +6,18 @@ use {
         pubkey::Pubkey,
         signature::{read_keypair_file, Keypair, Signer},
         transaction::VersionedTransaction,
+        compute_budget,
+        instruction::Instruction,
     },
+    helius::client,
+    helius::types::types
 };
 use thiserror::Error;
 use rustler::{Encoder, Env, Term};
 use tokio::runtime::{Runtime, Handle};
 use std::sync::Once;
+use std::sync::Arc;
+use serde_json;
 
 // Remove this line as it's unused
 // use futures::executor::block_on;
@@ -131,50 +137,71 @@ fn do_quick_swap(token_from: Pubkey, token_to: Pubkey, amount: u64) -> Result<St
             }
         };
 
-        let jup_ag::Swap { swap, .. } =
-            jup_ag::swap_with_config(combined_quote.clone(), keypair.pubkey(), swap_config)
-                .await
-                .unwrap();
+        let swap_response = jup_ag::swap_with_instructions(combined_quote.clone(), keypair.pubkey(), swap_config)
+            .await
+            .map_err(|e| format!("Failed to get swap instructions: {}", e))?;
 
-        let transaction = swap;
+        // Initialize instructions vector without compute budget instruction
+        let mut instructions = Vec::new();
+        
+        // Add setup instructions if any
+        for setup_instruction in swap_response.setup_instructions {
+            let instruction = setup_instruction.into_instruction()
+                .map_err(|e| format!("Failed to parse setup instruction: {}", e))?;
+            instructions.push(instruction);
+        }
+        
+        // Add the main swap instruction
+        let swap_instruction = swap_response.swap_instruction.into_instruction()
+            .map_err(|e| format!("Failed to parse swap instruction: {}", e))?;
+        instructions.push(swap_instruction);
+        
+        // Add cleanup instruction if any
+        if let Some(cleanup_instruction) = swap_response.cleanup_instruction {
+            let instruction = cleanup_instruction.into_instruction()
+                .map_err(|e| format!("Failed to parse cleanup instruction: {}", e))?;
+            instructions.push(instruction);
+        }
 
-        let vt = VersionedTransaction::try_new(transaction.message, &[&keypair]).unwrap();
-        vt.verify_with_results();
+        let helius_api_key = std::env::var("HELIUS_API_KEY")
+            .map_err(|_| "HELIUS_API_KEY environment variable not set".to_string())?;
+        
+        let helius_client = client::Helius::new(&helius_api_key, types::Cluster::MainnetBeta).unwrap();
 
-        let rpc_url = std::env::var("RPC_URL").unwrap_or("https://api.mainnet-beta.solana.com".to_string());
-
-        let rpc_client = RpcClient::new_with_commitment(
-            rpc_url.into(),
-            CommitmentConfig::confirmed(),
-        );
-
-        let response = rpc_client.simulate_transaction(&vt).await.unwrap();
-        println!("{response:#?}");
-
-        let result = if response.value.err.is_none() {
-            let response_value = response.value;
-            println!("SIMULATE TRANSACTION RESPONSE================================");
-            println!("{response_value:#?}");
-
-            match rpc_client.send_and_confirm_transaction_with_spinner(&vt).await {
-                Err(e) => {
-                    println!("{e:#?}");
-                    Err(format!("{e:#?}"))
-                }
-                Ok(s) => {
-                    println!("SEND AND CONFIRM TRANSACTION================================");
-                    println!("{s:#?}");
-                    Ok(format!("{s:#?}"))
-                }
-            }
-        } else {
-            let response_value_err = response.value.err;
-            println!("SIMULATE TRANSACTION ERROR RESPONSE================================");
-            println!("{response_value_err:#?}");
-            Err(format!("{response_value_err:#?}"))
+        // Create smart transaction config
+        let smart_config = types::SmartTransactionConfig {
+            create_config: types::CreateSmartTransactionConfig {
+                instructions,
+                signers: vec![Arc::new(keypair)],
+                lookup_tables: None,
+                fee_payer: None,
+                priority_fee_cap: None,
+            },
+            send_options: solana_rpc_client_api::config::RpcSendTransactionConfig {
+                skip_preflight: true,
+                preflight_commitment: None,
+                encoding: None,
+                max_retries: Some(2),
+                min_context_slot: None,
+            },
+            timeout: types::Timeout {
+                duration: std::time::Duration::from_secs(60),
+            },
         };
 
-        result
+        // Send smart transaction
+        match helius_client.send_smart_transaction(smart_config).await {
+            Ok(signature) => {
+                println!("TRANSACTION SIGNATURE================================");
+                println!("{signature:#?}");
+                Ok(format!("{signature:#?}"))
+            }
+            Err(e) => {
+                println!("TRANSACTION ERROR================================");
+                println!("{e:#?}");
+                Err(format!("{e:#?}"))
+            }
+        }
     })
 }
 
