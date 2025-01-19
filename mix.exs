@@ -2,7 +2,7 @@ defmodule JupSwap.MixProject do
   use Mix.Project
 
   @source_url "https://github.com/trodrigu/jup_swap"
-  @version "0.2.0"
+  @version "0.2.1"
   @dev? String.ends_with?(@version, "-dev")
   @force_build? System.get_env("JUP_SWAP_BUILD") in ["1", "true"]
 
