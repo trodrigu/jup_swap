@@ -187,6 +187,8 @@ fn do_quick_swap(token_from: Pubkey, token_to: Pubkey, amount: u64) -> Result<St
                     std::env::var("TRANSACTION_MAX_RETRIES")
                         .map(|s| s.parse::<u64>().unwrap())
                         .unwrap_or(2)
+                        .try_into()
+                        .unwrap()
                 ),
                 min_context_slot: None,
             },
