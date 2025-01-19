@@ -178,14 +178,24 @@ fn do_quick_swap(token_from: Pubkey, token_to: Pubkey, amount: u64) -> Result<St
                 priority_fee_cap: None,
             },
             send_options: solana_rpc_client_api::config::RpcSendTransactionConfig {
-                skip_preflight: true,
+                skip_preflight: std::env::var("TRANSACTION_SKIP_PREFLIGHT")
+                    .map(|s| s.parse::<bool>().unwrap())
+                    .unwrap_or(true),
                 preflight_commitment: None,
                 encoding: None,
-                max_retries: Some(2),
+                max_retries: Some(
+                    std::env::var("TRANSACTION_MAX_RETRIES")
+                        .map(|s| s.parse::<u64>().unwrap())
+                        .unwrap_or(2)
+                ),
                 min_context_slot: None,
             },
             timeout: types::Timeout {
-                duration: std::time::Duration::from_secs(60),
+                duration: std::time::Duration::from_secs(
+                    std::env::var("TRANSACTION_TIMEOUT_SECS")
+                        .map(|s| s.parse::<u64>().unwrap())
+                        .unwrap_or(60)
+                ),
             },
         };
 
