@@ -67,13 +67,25 @@ fn quick_swap(token_to: String, token_from: String, amount: u64) -> Result<Strin
 fn do_quick_swap(token_from: Pubkey, token_to: Pubkey, amount: u64) -> Result<String, String> {
     get_runtime().block_on(async {
         let client = reqwest::Client::builder().build().unwrap();
+        let slippage_bps = std::env::var("SLIPPAGE_BPS")
+            .ok()
+            .and_then(|s| s.parse::<u64>().ok());
+        let only_direct_routes = std::env::var("ONLY_DIRECT_ROUTES")
+            .ok()
+            .and_then(|s| s.parse::<bool>().ok())
+            .unwrap_or(true);
+        let swap_mode = std::env::var("SWAP_MODE")
+            .ok()
+            .and_then(|s| s.parse::<String>().ok())
+            .unwrap_or("ExactIn".to_string());
+
         let from_url = jup_ag::quote_url(
             token_from,
             token_to,
             amount.to_string(),
-            true,
-            Some(0),
-            "ExactIn".to_string()
+            only_direct_routes,
+            slippage_bps,
+            swap_mode.clone()
         );
         let from_resp = client.get(from_url).send().await.unwrap();
         let from_json = from_resp.json().await.unwrap();
@@ -87,18 +99,16 @@ fn do_quick_swap(token_from: Pubkey, token_to: Pubkey, amount: u64) -> Result<St
 
         combined_route_plans.append(&mut from_quote.clone().route_plan);
 
-        let slippage_bps = std::env::var("SLIPPAGE_BPS").map(|s| s.parse::<u64>().unwrap()).unwrap_or(20);
-
         let combined_quote = jup_ag::Quote {
             input_mint: from_quote.input_mint,
             output_mint: from_quote.output_mint,
             in_amount: from_quote.in_amount,
             out_amount: from_quote.out_amount,
             route_plan: combined_route_plans,
-            slippage_bps: slippage_bps,
+            slippage_bps: from_quote.slippage_bps,
             price_impact_pct: from_quote.price_impact_pct,
             other_amount_threshold: from_quote.other_amount_threshold,
-            swap_mode: "ExactIn".to_string(),
+            swap_mode: swap_mode,
         };
 
         let swap_config = jup_ag::SwapConfig {

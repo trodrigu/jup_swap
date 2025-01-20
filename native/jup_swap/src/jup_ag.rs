@@ -200,7 +200,7 @@ pub fn quote_url(
     swap_mode: String,
 ) -> std::string::String {
     format!(
-        "https://quote-api.jup.ag/v6/quote?inputMint={}&outputMint={}&amount={}&onlyDirectRoutes={}&swapMode={}{}",
+        "https://quote-api.jup.ag/v6/quote?inputMint={}&outputMint={}&amount={}&onlyDirectRoutes={}&swapMode={}&excludeDexes=Phoenix&restrictIntermediateTokens=true{}{}",
         input_mint,
         output_mint,
         amount,
@@ -208,10 +208,10 @@ pub fn quote_url(
         swap_mode,
         slippage
             .map(|slippage| format!("&slippageBps={}", slippage))
-            .unwrap_or_default(),
-        //fees_bps
-            //.map(|fees_bps| format!("&feesBps={}", fees_bps))
-            //.unwrap_or_default(),
+            .unwrap_or_else(|| "&autoSlippage=true&maxAutoSlippageBps=100".to_string()),
+        slippage
+            .map(|_| "")
+            .unwrap_or_else(|| "&autoSlippageCollisionUsdValue=1000"),
     )
 }
 
