@@ -79,6 +79,11 @@ fn do_quick_swap(token_from: Pubkey, token_to: Pubkey, amount: u64) -> Result<St
             .and_then(|s| s.parse::<String>().ok())
             .unwrap_or("ExactIn".to_string());
 
+        let wrap_and_unwrap_sol = std::env::var("WRAP_AND_UNWRAP_SOL")
+            .ok()
+            .and_then(|s| s.parse::<bool>().ok())
+            .unwrap_or(false);
+
         let from_url = jup_ag::quote_url(
             token_from,
             token_to,
@@ -112,7 +117,7 @@ fn do_quick_swap(token_from: Pubkey, token_to: Pubkey, amount: u64) -> Result<St
         };
 
         let swap_config = jup_ag::SwapConfig {
-            wrap_and_unwrap_sol: Some(false),
+            wrap_and_unwrap_sol: Some(wrap_and_unwrap_sol),
             fee_account: None,
             token_ledger: None
         };
