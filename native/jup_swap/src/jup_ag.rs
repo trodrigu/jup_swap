@@ -127,9 +127,9 @@ pub struct FeeInfo {
 /// Partially signed transactions required to execute a swap
 #[derive(Clone, Debug)]
 pub struct Swap {
-    //pub setup: Option<Transaction>,
+    pub setup: Option<VersionedTransaction>,
     pub swap: VersionedTransaction,
-    //pub cleanup: Option<Transaction>,
+    pub cleanup: Option<VersionedTransaction>,
 }
 
 
@@ -225,10 +225,22 @@ pub struct SwapConfig {
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
 #[allow(non_snake_case)]
+struct PrioritizationFeeLamports {
+    #[serde(with = "field_as_string")]
+    priority_level: String,
+    max_lamports: i32
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+#[allow(non_snake_case)]
 struct SwapRequest {
     #[serde(with = "field_as_string")]
     user_public_key: Pubkey,
     wrap_and_unwrap_sol: Option<bool>,
+    dynamic_compute_unit_limit: bool,
+    dynamic_slippage: bool,
+    prioritization_fee_lamports: PrioritizationFeeLamports,
     //use_token_ledger: Option<String>,
     //fee_account: Option<String>,
     quote_response: Quote,
@@ -237,9 +249,9 @@ struct SwapRequest {
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
 struct SwapResponse {
-    //setup_transaction: Option<String>,
+    setup_transaction: Option<String>,
     swap_transaction: String,
-    //cleanup_transaction: Option<String>,
+    cleanup_transaction: Option<String>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -311,10 +323,18 @@ pub async fn swap_with_config(
 ) -> Result<Swap> {
     let url = "https://quote-api.jup.ag/v6/swap";
 
+    let prioritization_fee_lamports = PrioritizationFeeLamports {
+        priority_level: "medium".to_string(),
+        max_lamports: 100000000
+    };
+
     let request = SwapRequest {
         quote_response,
         wrap_and_unwrap_sol: swap_config.wrap_and_unwrap_sol,
         user_public_key,
+        dynamic_slippage: true,
+        dynamic_compute_unit_limit: true,
+        prioritization_fee_lamports: prioritization_fee_lamports
     };
 
     let client = reqwest::Client::new();
@@ -324,8 +344,20 @@ pub async fn swap_with_config(
         .await?;
     let swap_response = maybe_jupiter_api_error::<SwapResponse>(response.json().await?)?;
 
+    let setup = match swap_response.setup_transaction {
+        Some(base64_setup) => (decode(base64_setup)).ok(),
+        None => None
+    };
+
+    let cleanup = match swap_response.cleanup_transaction {
+        Some(base64_setup) => (decode(base64_setup)).ok(),
+        None => None
+    };
+
     Ok(Swap {
+        setup: setup,
         swap: decode(swap_response.swap_transaction)?,
+        cleanup: cleanup
     })
 }
 
@@ -337,10 +369,18 @@ pub async fn swap_with_instructions(
 ) -> Result<SwapInstructions> {
     let url = "https://quote-api.jup.ag/v6/swap-instructions";
 
+    let prioritization_fee_lamports = PrioritizationFeeLamports {
+        priority_level: "medium".to_string(),
+        max_lamports: 100000000
+    };
+
     let request = SwapRequest {
         quote_response,
         wrap_and_unwrap_sol: swap_config.wrap_and_unwrap_sol,
         user_public_key,
+        dynamic_slippage: true,
+        dynamic_compute_unit_limit: true,
+        prioritization_fee_lamports: prioritization_fee_lamports
     };
 
     let client = reqwest::Client::new();
@@ -365,6 +405,13 @@ pub async fn swap(route: Quote, user_public_key: Pubkey) -> Result<Swap> {
 fn decode(base64_transaction: String) -> Result<VersionedTransaction> {
     bincode::deserialize(&base64::decode(base64_transaction)?).map_err(|err| err.into())
 }
+
+//fn decodeOption(possible_base64_transaction: Option<String>) -> Result<VersionedTransaction> {
+    //match possible_base64_transaction {
+        //Some(base64_transaction) => bincode::deserialize(&base64::decode(base64_transaction)?).map_err(|err| err.into()),
+        //None => 
+    //}
+//}
 
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]

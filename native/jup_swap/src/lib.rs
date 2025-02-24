@@ -113,7 +113,7 @@ fn do_quick_swap(token_from: Pubkey, token_to: Pubkey, amount: u64) -> Result<St
             slippage_bps: from_quote.slippage_bps,
             price_impact_pct: from_quote.price_impact_pct,
             other_amount_threshold: from_quote.other_amount_threshold,
-            swap_mode: swap_mode,
+            swap_mode: swap_mode
         };
 
         let swap_config = jup_ag::SwapConfig {
