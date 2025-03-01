@@ -10,7 +10,7 @@ by adding `jup_swap` to your list of dependencies in `mix.exs`:
 ```elixir
 def deps do
   [
-    {:jup_swap, "~> 0.2.9"}
+    {:jup_swap, "~> 0.3.0"}
   ]
 end
 ```

@@ -222,14 +222,14 @@ pub struct SwapConfig {
     pub token_ledger: Option<Pubkey>
 }
 
-#[derive(Debug, Serialize)]
-#[serde(rename_all = "camelCase")]
-#[allow(non_snake_case)]
-struct PrioritizationFeeLamports {
-    #[serde(with = "field_as_string")]
-    priority_level: String,
-    max_lamports: i32
-}
+//#[derive(Debug, Serialize)]
+//#[serde(rename_all = "camelCase")]
+//#[allow(non_snake_case)]
+//struct PrioritizationFeeLamports {
+    //#[serde(with = "field_as_string")]
+    //priority_level: String,
+    //max_lamports: i32
+//}
 
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -240,7 +240,7 @@ struct SwapRequest {
     wrap_and_unwrap_sol: Option<bool>,
     dynamic_compute_unit_limit: bool,
     dynamic_slippage: bool,
-    prioritization_fee_lamports: PrioritizationFeeLamports,
+    //prioritization_fee_lamports: PrioritizationFeeLamports,
     //use_token_ledger: Option<String>,
     //fee_account: Option<String>,
     quote_response: Quote,
@@ -323,10 +323,10 @@ pub async fn swap_with_config(
 ) -> Result<Swap> {
     let url = "https://quote-api.jup.ag/v6/swap";
 
-    let prioritization_fee_lamports = PrioritizationFeeLamports {
-        priority_level: "medium".to_string(),
-        max_lamports: 100000000
-    };
+    //let prioritization_fee_lamports = PrioritizationFeeLamports {
+        //priority_level: "medium".to_string(),
+        //max_lamports: 100000000
+    //};
 
     let request = SwapRequest {
         quote_response,
@@ -334,7 +334,7 @@ pub async fn swap_with_config(
         user_public_key,
         dynamic_slippage: true,
         dynamic_compute_unit_limit: true,
-        prioritization_fee_lamports: prioritization_fee_lamports
+        //prioritization_fee_lamports: prioritization_fee_lamports
     };
 
     let client = reqwest::Client::new();
@@ -369,10 +369,10 @@ pub async fn swap_with_instructions(
 ) -> Result<SwapInstructions> {
     let url = "https://quote-api.jup.ag/v6/swap-instructions";
 
-    let prioritization_fee_lamports = PrioritizationFeeLamports {
-        priority_level: "medium".to_string(),
-        max_lamports: 100000000
-    };
+    //let prioritization_fee_lamports = PrioritizationFeeLamports {
+        //priority_level: "medium".to_string(),
+        //max_lamports: 100000000
+    //};
 
     let request = SwapRequest {
         quote_response,
@@ -380,7 +380,7 @@ pub async fn swap_with_instructions(
         user_public_key,
         dynamic_slippage: true,
         dynamic_compute_unit_limit: true,
-        prioritization_fee_lamports: prioritization_fee_lamports
+        //prioritization_fee_lamports: prioritization_fee_lamports
     };
 
     let client = reqwest::Client::new();
