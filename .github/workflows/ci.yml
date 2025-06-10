@@ -19,7 +19,7 @@ jobs:
             elixir_version: 1.14
 
           - otp_version: "26.2.1"
-            elixir_version: 1.16
+            elixir_version: 1.17.2
 
     runs-on: ubuntu-latest
     name: test
@@ -65,5 +65,5 @@ jobs:
       - uses: erlef/setup-beam@v1
         with:
           otp-version: "26.2.1"
-          elixir-version: 1.16
+          elixir-version: 1.17.2
       - run: mix format --check-formatted
