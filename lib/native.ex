@@ -1,5 +1,4 @@
 defmodule JupSwap.Native do
-
   mix_config = Mix.Project.config()
   version = mix_config[:version]
   github_url = mix_config[:package][:links]["GitHub"]
@@ -11,7 +10,6 @@ defmodule JupSwap.Native do
       # See the meaning in: https://unix.stackexchange.com/a/43540
       needed_caps = ~w[fxsr sse sse2 ssse3 sse4_1 sse4_2 popcnt avx fma]
 
-      
       not Unit.ComptimeUtils.cpu_with_all_caps?(needed_caps)
     end
   ]
@@ -37,4 +35,3 @@ defmodule JupSwap.Native do
 
   defp err, do: :erlang.nif_error(:nif_not_loaded)
 end
-

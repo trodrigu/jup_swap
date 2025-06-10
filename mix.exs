@@ -57,7 +57,15 @@ defmodule JupSwap.MixProject do
         "Changelog" => "#{@source_url}/blob/v#{@version}/CHANGELOG.md"
       },
       maintainers: ["Thomas Rodriguez"],
-      exclude_patterns: ["_build", "deps", "priv", "test", "notebooks", "doc", "native/jup_swap/target"]
+      exclude_patterns: [
+        "_build",
+        "deps",
+        "priv",
+        "test",
+        "notebooks",
+        "doc",
+        "native/jup_swap/target"
+      ]
     ]
   end
 end
