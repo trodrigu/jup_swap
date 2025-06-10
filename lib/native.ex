@@ -33,7 +33,7 @@ defmodule JupSwap.Native do
     mode: mode,
     force_build: System.get_env("JUP_SWAP_BUILD") in ["1", "true"]
 
-  def quick_swap(_token_to, _token_from, _amount), do: err()
+  def quick_swap(_token_to, _token_from, _amount, _key_env_var), do: err()
 
   defp err, do: :erlang.nif_error(:nif_not_loaded)
 end

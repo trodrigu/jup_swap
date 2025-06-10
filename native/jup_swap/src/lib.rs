@@ -57,14 +57,14 @@ fn get_runtime() -> &'static Runtime {
 }
 
 #[rustler::nif(schedule = "DirtyCpu")]
-fn quick_swap(token_to: String, token_from: String, amount: u64) -> Result<String, String> {
+fn quick_swap(token_to: String, token_from: String, amount: u64, key_env_var: String) -> Result<String, String> {
     let token_from_pubkey = Pubkey::try_from(token_from.as_str()).unwrap();
     let token_to_pubkey = Pubkey::try_from(token_to.as_str()).unwrap();
     
-    do_quick_swap(token_from_pubkey, token_to_pubkey, amount)
+    do_quick_swap(token_from_pubkey, token_to_pubkey, amount, key_env_var)
 }
 
-fn do_quick_swap(token_from: Pubkey, token_to: Pubkey, amount: u64) -> Result<String, String> {
+fn do_quick_swap(token_from: Pubkey, token_to: Pubkey, amount: u64, key_env_var: String) -> Result<String, String> {
     get_runtime().block_on(async {
         let client = reqwest::Client::builder().build().unwrap();
         let slippage_bps = std::env::var("SLIPPAGE_BPS")
@@ -122,7 +122,7 @@ fn do_quick_swap(token_from: Pubkey, token_to: Pubkey, amount: u64) -> Result<St
             token_ledger: None
         };
 
-        let keypair = match std::env::var("SOLANA_PRIVATE_KEY") {
+        let keypair = match std::env::var(&key_env_var) {
             Ok(key_string) => {
                 // First try parsing as JSON array
                 let key_bytes = if key_string.starts_with('[') {
@@ -140,10 +140,10 @@ fn do_quick_swap(token_from: Pubkey, token_to: Pubkey, amount: u64) -> Result<St
             },
             Err(_) => {
                 println!("------------------------------------------------------------------------------------------------");
-                println!("No SOLANA_PRIVATE_KEY environment variable found.");
+                println!("No {} environment variable found.", key_env_var);
                 println!();
                 println!("An ephemeral keypair will be used instead. For a more realistic example, set the");
-                println!("SOLANA_PRIVATE_KEY environment variable with either:");
+                println!("{} environment variable with either:", key_env_var);
                 println!("  - A JSON array of bytes");
                 println!("  - A base58 encoded private key");
                 println!("------------------------------------------------------------------------------------------------");
